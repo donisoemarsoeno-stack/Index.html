@@ -1,1 +1,114 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Keuangan Doni Pro++ Final</title>
+<style>
+body{font-family:Arial;margin:0;padding:15px;background:#f4f4f4}
+.dark{background:#1f1f1f;color:#fff}
+.wrap{max-width:1100px;margin:auto;background:#fff;padding:15px;border-radius:12px}
+.dark .wrap{background:#2d2d2d}
+input,button,select{padding:8px;margin:4px}
+table{width:100%;border-collapse:collapse}
+th,td{border:1px solid #ccc;padding:6px}
+.card{display:inline-block;border:1px solid #ccc;border-radius:8px;padding:10px;margin:5px}
+.progress{background:#ddd;border-radius:8px;height:20px}
+.bar{background:green;height:20px;border-radius:8px;width:0%}
+</style>
+</head>
+<body>
+<div class="wrap">
+<h1>Keuangan Doni Pro++ Final</h1>
+<button onclick="document.body.classList.toggle('dark')">🌙 Dark Mode</button>
 
+<h3>Target Tabungan</h3>
+<input id="target" type="number" placeholder="Target">
+<input id="saved" type="number" placeholder="Terkumpul">
+<button onclick="saveTarget()">Simpan</button>
+<div class="progress"><div id="bar" class="bar"></div></div>
+<p id="prog"></p>
+
+<h3>Transaksi</h3>
+<input id="tgl" type="date">
+<select id="jenis"><option>Pemasukan</option><option>Pengeluaran</option></select>
+<input id="kategori" placeholder="Kategori">
+<input id="ket" placeholder="Keterangan">
+<input id="nominal" type="number" placeholder="Nominal">
+<button onclick="addTx()">Tambah</button>
+
+<h3>Dashboard</h3>
+<div class="card">Pemasukan: Rp <span id="m">0</span></div>
+<div class="card">Pengeluaran: Rp <span id="k">0</span></div>
+<div class="card">Saldo: Rp <span id="s">0</span></div>
+
+<br><input id="search" placeholder="Cari..." oninput="render()">
+<input id="bulan" type="month" onchange="render()">
+
+<table>
+<thead><tr><th>Tanggal</th><th>Jenis</th><th>Kategori</th><th>Keterangan</th><th>Nominal</th><th>Aksi</th></tr></thead>
+<tbody id="tb"></tbody>
+</table>
+
+<br>
+<button onclick="backup()">Backup JSON</button>
+<input type="file" onchange="restore(event)">
+</div>
+
+<script>
+let data=JSON.parse(localStorage.getItem('doni_data')||'[]');
+let tgt=JSON.parse(localStorage.getItem('doni_target')||'{"target":0,"saved":0}');
+
+function saveData(){localStorage.setItem('doni_data',JSON.stringify(data));render();}
+function addTx(){
+data.unshift({
+tgl:tgl.value,jenis:jenis.value,kategori:kategori.value,
+ket:ket.value,nominal:+nominal.value
+});
+saveData();
+}
+function del(i){if(confirm('Hapus?')){data.splice(i,1);saveData();}}
+function editTx(i){
+let n=prompt('Nominal baru',data[i].nominal);
+if(n!==null){data[i].nominal=+n;saveData();}
+}
+function render(){
+let masuk=0,keluar=0;
+tb.innerHTML='';
+let q=(search.value||'').toLowerCase();
+data.forEach((d,i)=>{
+if(bulan.value && !d.tgl.startsWith(bulan.value)) return;
+if(q && !(d.kategori+d.ket+d.jenis).toLowerCase().includes(q)) return;
+if(d.jenis==='Pemasukan') masuk+=d.nominal; else keluar+=d.nominal;
+tb.innerHTML+=`<tr><td>${d.tgl}</td><td>${d.jenis}</td><td>${d.kategori}</td><td>${d.ket}</td><td>${d.nominal.toLocaleString('id-ID')}</td><td><button onclick="editTx(${i})">✏️</button><button onclick="del(${i})">🗑️</button></td></tr>`;
+});
+m.innerText=masuk.toLocaleString('id-ID');
+k.innerText=keluar.toLocaleString('id-ID');
+s.innerText=(masuk-keluar).toLocaleString('id-ID');
+}
+function saveTarget(){
+tgt.target=+target.value;tgt.saved=+saved.value;
+localStorage.setItem('doni_target',JSON.stringify(tgt));
+loadTarget();
+}
+function loadTarget(){
+target.value=tgt.target;saved.value=tgt.saved;
+let p=tgt.target?((tgt.saved/tgt.target)*100):0;
+bar.style.width=Math.min(p,100)+'%';
+prog.innerText=p.toFixed(1)+'%';
+}
+function backup(){
+let blob=new Blob([JSON.stringify({data,tgt})],{type:'application/json'});
+let a=document.createElement('a');
+a.href=URL.createObjectURL(blob);
+a.download='backup_keuangan_doni.json';
+a.click();
+}
+function restore(e){
+let r=new FileReader();
+r.onload=()=>{let x=JSON.parse(r.result);data=x.data||[];tgt=x.tgt||tgt;saveData();loadTarget();};
+r.readAsText(e.target.files[0]);
+}
+loadTarget();render();
+</script>
+</body></html>
